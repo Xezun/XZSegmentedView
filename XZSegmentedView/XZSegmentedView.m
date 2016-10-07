@@ -1,29 +1,38 @@
 //
-//  XZMenuView.m
-//  Demo
+//  XZSegmentedView.m
+//  XZSegmentedView
 //
-//  Created by M. X. Z. on 2016/10/5.
-//  Copyright © 2016年 J. W. Z. All rights reserved.
+//  Created by M. X. Z. on 2016/10/7.
+//  Copyright © 2016年 mlibai. All rights reserved.
 //
 
-#import "XZMenuView.h"
+#import "XZSegmentedView.h"
 
-NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
+NSString *const kXZSegmentedViewIdentifier = @"kXZSegmentedViewIdentifier";
 
-@interface _XZMenuViewCell : UICollectionViewCell
+@class UITableViewCell;
 
-@property (nonatomic, strong) UIView<XZMenuItemView> *reusingView;
-@property (nonatomic, strong) UILabel *titleLabel;
+@interface XZSegment : UICollectionViewCell
+
+@property (nonatomic, strong) UIView<XZSegment> *reusingView;
+@property (nonatomic, strong) UILabel *textLabel;
+@property (nonatomic, strong) UIImageView *imageView;
+
+- (UILabel *)textLabelIfLoaded;
+- (UIImageView *)imageViewIfLoaded;
+
+- (UIImageView *)backgroundView;
+- (UIImageView *)selectedBackgroundView;
 
 @end
 
-@interface XZMenuView () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
+@interface XZSegmentedView () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
 
 @property (nonatomic, strong) UICollectionView *menuItemsView;
 
 @end
 
-@implementation XZMenuView
+@implementation XZSegmentedView
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (CGRectIsEmpty(frame)) {
@@ -68,7 +77,7 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
         _rightView.frame = rightFrame;
     }
     
-    NSUInteger itemsCount = [_dataSource numberOfItemsInMenuView:self];
+    NSUInteger itemsCount = [_dataSource numberOfItemsInSegmentedView:self];
     if (itemsCount > 0) {
         CGRect centerFrame = CGRectMake(CGRectGetMaxX(leftFrame), 0, CGRectGetWidth(menuBounds) - CGRectGetWidth(leftFrame) - CGRectGetWidth(rightFrame), menuHeight);
         CGFloat minimumWidth = 49.0;
@@ -97,29 +106,23 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
 }
 
 - (UIView *)viewForItemAtIndex:(NSInteger)index {
-    _XZMenuViewCell *cell = (_XZMenuViewCell *)[self.menuItemsView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
+    XZSegment *cell = (XZSegment *)[self.menuItemsView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
     return [cell reusingView];
 }
 
 #pragma mark - <UICollectionViewDataSource>
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    if ([_dataSource respondsToSelector:@selector(numberOfItemsInMenuView:)]) {
-        return [_dataSource numberOfItemsInMenuView:self];
-    }
-    return 0;
+    return [_dataSource numberOfItemsInSegmentedView:self];
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    _XZMenuViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kPDMenuIdentifier forIndexPath:indexPath];
+    XZSegment *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kXZSegmentedViewIdentifier forIndexPath:indexPath];
+//    [cell backgroundView].image = self.backgroundImage;
+//    [cell selectedBackgroundView].image = self.selectionIndicatorImage;
     
-    if ([_dataSource respondsToSelector:@selector(menuView:viewForItemAtIndex:reusingView:)]) {
-        cell.reusingView = [_dataSource menuView:self viewForItemAtIndex:indexPath.item reusingView:cell.reusingView];
-    } else if ([_dataSource respondsToSelector:@selector(menuView:titleForMenuItemAtIndex:)]) {
-        NSString *title = [_dataSource menuView:self titleForMenuItemAtIndex:indexPath.item];
-        if (title != nil) {
-            cell.titleLabel.text = title;
-        }
+    if ([_dataSource respondsToSelector:@selector(segmentedView:viewForItemAtIndex:reusingView:)]) {
+        cell.reusingView = [_dataSource segmentedView:self viewForItemAtIndex:indexPath.item reusingView:cell.reusingView];
     }
     
     return cell;
@@ -132,16 +135,16 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    if ([_delegate respondsToSelector:@selector(menuView:didSelectItemAtIndex:)]) {
-        [_delegate menuView:self didSelectItemAtIndex:indexPath.item];
+    if ([_delegate respondsToSelector:@selector(segmentedView:didSelectItemAtIndex:)]) {
+        [_delegate segmentedView:self didSelectItemAtIndex:indexPath.item];
     }
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    if ([_delegate respondsToSelector:@selector(menuView:widthForMenuItemAtIndex:)]) {
-        return CGSizeMake([_delegate menuView:self widthForMenuItemAtIndex:indexPath.item], CGRectGetHeight(collectionView.bounds));
+    if ([_delegate respondsToSelector:@selector(segmentedView:widthForMenuItemAtIndex:)]) {
+        return CGSizeMake([_delegate segmentedView:self widthForMenuItemAtIndex:indexPath.item], CGRectGetHeight(collectionView.bounds));
     }
-    return CGSizeMake(_minimumItemWidth, CGRectGetHeight(collectionView.bounds));
+    return CGSizeMake([self estimatedItemWidth], CGRectGetHeight(collectionView.bounds));
 }
 
 #pragma mark - 属性
@@ -154,7 +157,7 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
     flowLayout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
     flowLayout.minimumLineSpacing = 0;
     flowLayout.minimumInteritemSpacing = 0;
-    flowLayout.itemSize = CGSizeMake([self minimumItemWidth], CGRectGetHeight(self.bounds));
+    flowLayout.itemSize = CGSizeMake([self estimatedItemWidth], CGRectGetHeight(self.bounds));
     _menuItemsView = [[UICollectionView alloc] initWithFrame:self.bounds collectionViewLayout:flowLayout];
     _menuItemsView.backgroundColor = [UIColor clearColor];
     if ([_menuItemsView respondsToSelector:@selector(setPrefetchingEnabled:)]) {
@@ -172,7 +175,7 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
     _menuItemsView.showsHorizontalScrollIndicator = NO;
     _menuItemsView.alwaysBounceVertical           = NO;
     _menuItemsView.alwaysBounceHorizontal         = YES;
-    [_menuItemsView registerClass:[_XZMenuViewCell class] forCellWithReuseIdentifier:kPDMenuIdentifier];
+    [_menuItemsView registerClass:[XZSegment class] forCellWithReuseIdentifier:kXZSegmentedViewIdentifier];
     [self addSubview:_menuItemsView];
     [self setNeedsLayout];
     return _menuItemsView;
@@ -219,21 +222,21 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
     [self setSelectedIndex:selectedIndex animated:NO];
 }
 
-@synthesize minimumItemWidth = _minimumItemWidth;
+@synthesize estimatedItemWidth = _estimatedItemWidth;
 
-- (CGFloat)minimumItemWidth {
-    if (_minimumItemWidth > 0) {
-        return _minimumItemWidth;
+- (CGFloat)estimatedItemWidth {
+    if (_estimatedItemWidth > 0) {
+        return _estimatedItemWidth;
     }
-    _minimumItemWidth = 49.0;
-    return _minimumItemWidth;
+    _estimatedItemWidth = 49.0;
+    return _estimatedItemWidth;
 }
 
-- (void)setMinimumItemWidth:(CGFloat)minimumItemWidth {
-    if (_minimumItemWidth != minimumItemWidth) {
-        _minimumItemWidth = minimumItemWidth;
+- (void)setEstimatedItemWidth:(CGFloat)estimatedItemWidth {
+    if (_estimatedItemWidth != estimatedItemWidth) {
+        _estimatedItemWidth = estimatedItemWidth;
         if (_menuItemsView != nil) {
-            CGFloat minimumWidth = _minimumItemWidth;
+            CGFloat minimumWidth = _estimatedItemWidth;
             CGFloat totalWith = CGRectGetWidth([UIScreen mainScreen].bounds) - 8.0 * 2 - 38.0;
             minimumWidth = (totalWith / floor(totalWith / minimumWidth));
             UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)_menuItemsView.collectionViewLayout;
@@ -243,28 +246,53 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
     }
 }
 
+//- (void)setBackgroundImage:(UIImage *)backgroundImage {
+//    if (_backgroundImage != backgroundImage) {
+//        _backgroundImage = backgroundImage;
+//        [self setNeedsLayout];
+//    }
+//}
+//
+//- (void)setSelectionIndicatorImage:(UIImage *)selectionIndicatorImage {
+//    if (_selectionIndicatorImage != selectionIndicatorImage) {
+//        _selectionIndicatorImage = selectionIndicatorImage;
+//        [self setNeedsLayout];
+//    }
+//}
+//
+//
+//
+//- (void)setSeperatorImage:(UIImage *)seperatorImage {
+//    if (_seperatorImage != seperatorImage) {
+//        _seperatorImage = seperatorImage;
+//        [self setNeedsLayout];
+//    }
+//}
 
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
 
 @end
 
 
+@implementation XZSegment
 
+- (UIImageView *)backgroundView {
+    return (UIImageView *)[super backgroundView];
+}
 
+- (UIImageView *)selectedBackgroundView {
+    return (UIImageView *)[super selectedBackgroundView];
+}
 
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self != nil) {
+        self.backgroundView = [[UIImageView alloc] init];
+        self.selectedBackgroundView = [[UIImageView alloc] init];
+    }
+    return self;
+}
 
-
-
-
-@implementation _XZMenuViewCell
-
-- (void)setReusingView:(UIView<XZMenuItemView> *)reusingView {
+- (void)setReusingView:(UIView<XZSegment> *)reusingView {
     if (_reusingView != reusingView) {
         [_reusingView removeFromSuperview];
         _reusingView = reusingView;
@@ -298,26 +326,30 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
     }
 }
 
-@synthesize titleLabel = _titleLabel;
+@synthesize textLabel = _textLabel;
 
-- (UILabel *)titleLabel {
-    if (_titleLabel != nil) {
-        return _titleLabel;
+- (UILabel *)textLabelIfLoaded {
+    return _textLabel;
+}
+
+- (UILabel *)textLabel {
+    if (_textLabel != nil) {
+        return _textLabel;
     }
     [self setTitleLabel:[[UILabel alloc] init]];
-    return _titleLabel;
+    return _textLabel;
 }
 
 - (void)setTitleLabel:(UILabel *)titleLabel {
-    if (_titleLabel != titleLabel) {
-        [_titleLabel removeFromSuperview];
-        _titleLabel = titleLabel;
-        if (_titleLabel != nil) {
-            _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-            [self.contentView insertSubview:_titleLabel atIndex:0];
+    if (_textLabel != titleLabel) {
+        [_textLabel removeFromSuperview];
+        _textLabel = titleLabel;
+        if (_textLabel != nil) {
+            _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
+            [self.contentView insertSubview:_textLabel atIndex:0];
             
-            NSLayoutConstraint *const1 = [NSLayoutConstraint constraintWithItem:_titleLabel attribute:(NSLayoutAttributeCenterX) relatedBy:(NSLayoutRelationEqual) toItem:self.contentView attribute:(NSLayoutAttributeCenterX) multiplier:1.0 constant:0];
-            NSLayoutConstraint *const2 = [NSLayoutConstraint constraintWithItem:_titleLabel attribute:(NSLayoutAttributeCenterY) relatedBy:(NSLayoutRelationEqual) toItem:self.contentView attribute:(NSLayoutAttributeCenterY) multiplier:1.0 constant:0];
+            NSLayoutConstraint *const1 = [NSLayoutConstraint constraintWithItem:_textLabel attribute:(NSLayoutAttributeCenterX) relatedBy:(NSLayoutRelationEqual) toItem:self.contentView attribute:(NSLayoutAttributeCenterX) multiplier:1.0 constant:0];
+            NSLayoutConstraint *const2 = [NSLayoutConstraint constraintWithItem:_textLabel attribute:(NSLayoutAttributeCenterY) relatedBy:(NSLayoutRelationEqual) toItem:self.contentView attribute:(NSLayoutAttributeCenterY) multiplier:1.0 constant:0];
             [self.contentView addConstraint:const1];
             [self.contentView addConstraint:const2];
         }
@@ -325,3 +357,9 @@ NSString *const kPDMenuIdentifier = @"kPDMenuIdentifier";
 }
 
 @end
+
+
+
+
+
+

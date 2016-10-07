@@ -1,9 +1,9 @@
 //
 //  main.m
-//  Demo
+//  XZSegmentedView
 //
-//  Created by M. X. Z. on 2016/10/5.
-//  Copyright © 2016年 J. W. Z. All rights reserved.
+//  Created by M. X. Z. on 2016/10/7.
+//  Copyright © 2016年 mlibai. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
